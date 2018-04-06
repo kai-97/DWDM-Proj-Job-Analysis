@@ -1,0 +1,27 @@
+---
+title: "DWDM Project Analysis"
+output: html_notebook
+---
+
+Members:<br>
+<ol>
+<li>Kaivan Shah</li>
+<li>Navneet Kishan</li>
+</ol>
+
+This is an R notebook containing the analysis of the Job Postings from naukri.com<br>
+Data has been obtained from web scraping and analyzed here.<br>
+Presently contains basic Exploratory analysis techniques and further analysis and models to be built eventually.
+```{r}
+#install.packages('Amelia')
+#install.packages("ggplot2")
+#nstall.packages("tidyr")
+library(Amelia)
+library(magrittr)
+
+df<-read.csv("./refined_data.csv", header = TRUE)
+print(df)
+
+missmap(df)
+```
+

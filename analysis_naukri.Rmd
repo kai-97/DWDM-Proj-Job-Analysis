@@ -1,0 +1,201 @@
+---
+title: "DWDM Project Analysis"
+output: html_notebook
+---
+<h4>
+Members:<br>
+<ol>
+<li><strong>Kaivan Shah</strong></li>
+<li><strong>Navneet Kishan</strong></li>
+</ol>
+
+This is an R notebook containing the analysis of the Job Postings from naukri.com<br>
+Data has been obtained from web scraping and analyzed here.<br>
+Presently contains basic Exploratory analysis techniques and further analysis and models to be built eventually.<br>
+<br>
+<strong>OBJECTIVE:</strong> To analyze various trends in jobs for a particular period of time and make a simple linear model to predict Lowest Salary for a job based on the experience level.
+</h4>
+
+```{r}
+#install.packages('Amelia')
+#install.packages("ggplot2")
+#install.packages("tidyr")
+library(Amelia)
+library(magrittr)
+
+df<-read.csv("./refined_data.csv", header = TRUE)
+#print(df)
+
+missmap(df)
+#after refining
+```
+Shows the Missing Attributes for a certain row value.
+
+```{r}
+ggplot(data = df, aes(x=org, y=salLow))+geom_bar(stat = "identity")
+```
+
+
+```{r}
+matr<-data.matrix(df, rownames.force = NA)
+#print(matr)
+corr<-cor(matr)
+#matr<-matrix(df$expLow, nrow = 25, ncol = 25)
+print(corr)
+heatmap(as.matrix(corr), scale = "column",Rowv = NA, Colv = NA)
+
+```
+
+```{r}
+matr<-data.matrix(df, rownames.force = NA)
+#print(matr)
+#corr<-cor(matr)
+#matr<-matrix(df$expLow, nrow = 25, ncol = 25)
+matr2<-matrix(c(df$expLow, df$salLow), nrow = 100, ncol = 100)
+corr<-cor(matr2)
+#print(corr)
+heatmap(as.matrix(corr), scale = "column",Rowv = NA, Colv = NA)
+
+```
+
+k means here:
+```{r}
+#location wise lowest salary
+ggplot(data = df, aes(x=loc, y=salLow))+geom_bar(stat = "identity")+ theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+```{r}
+#total non null attributes and the count of those values
+c<-sapply(df, function(x) length(unique(x)))
+c
+```
+
+```{r}
+#values of each attribute
+lab<-c('designation','details','org','loc','keyskills','date','salLow','salHigh')
+color<-c("#344AF7", "#4875F5", "#65A6F7","#85E0F7", "#89E5F7")
+pie(c(622,622,459,174,727,94,34,38), labels = lab, col = color)
+```
+
+```{r}
+ggscatter(df, x="expLow", y="salLow", add = "reg.line", cor.coef = TRUE, conf.int = TRUE, cor.method = "pearson")
+#as p > 0.05, hence correlation not statistically significant
+```
+
+```{r}
+ggscatter(df, x="expHigh", y="salHigh.", add = "reg.line", cor.coef = TRUE, conf.int = TRUE, cor.method = "pearson")
+#as p<0.05, hence correlation statistially significant, with a correlation #coefficient of 0.11 which is a weak but positive relation.
+```
+
+```{r}
+#Linear model
+
+#lmMod <- lm(dist ~ speed, data=trainingData)  # build the model
+#distPred <- predict(lmMod, testData)
+
+testData<-read.csv("./naukriWebDeveloper_01.csv")
+mod<-lm(formula = salHigh. ~ (expHigh - expLow), data = df)
+mod
+distPred <- predict(mod, df)
+distPred
+as.data.frame(distPred)
+
+```
+Predicted values in a new Data Set
+<hr></hr>
+```{r}
+library(lubridate)
+
+#extracting only month
+om<-month(as.POSIXlt(df$date, format="%d-%m-%Y"))
+#om
+omm<-as.data.frame(om)
+omm
+tm<-sapply(omm, function(x) (unique(x)))
+tm
+
+#getCount function
+getCount <- function(x) {
+  u <- unique(x);
+  data.frame(
+     value=u,
+     count=sapply(u, function(v) { length(which(x==v)) } )
+  )
+}
+
+cnt<-getCount(om)
+plo<-as.data.frame(cnt)
+plo
+
+pie(c(plo$count), labels = c("Feb", "Mar", "Apr"), col = color)
+
+```
+
+```{r}
+om<-month(as.POSIXlt(df$date, format="%d-%m-%Y"))
+
+df2<-cbind(df,om)
+#Extracting opportunities only in MARCH
+fil<-subset(df2,om==3, select = (desig))
+fil<-as.data.frame(fil)
+
+#making all attributes uniform to compare easily for analysis
+
+#all to upper case
+df3<-toupper(fil$desig)
+#library(plan)
+head(df3)
+
+#Remove Whitespaces
+df4<-sapply(df3,function(x) gsub(" ","",x))
+as.data.frame(df4)
+
+#All Designations made uniform
+df5<-getCount(df4)
+as.data.frame(df5)
+```
+```{r}
+#extracting job opportunities > 1
+df6<-subset(df5, count>1, select = c(value, count))
+df6
+
+ggplot(data=df6, aes(x=value, y=count))+geom_bar(stat="identity", fill="#FF6666")+theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+```{r}
+library(cluster)
+library(fpc)
+
+as.data.frame(distPred)
+dat<- df$expLow
+clus <- kmeans(dat, centers = 3)
+clus
+df
+
+```
+
+```{r}
+plotcluster(dat, clus$cluster)
+
+```
+
+```{r}
+#finding salary along with the job as a factor in linear model
+
+nd<-read.csv("./new_data.csv")
+nd
+mod<-lm(formula = salLow ~ (expHigh - expLow + job), data = nd)
+#mod
+distPred <- predict(mod, nd)
+#distPred
+as.data.frame(distPred)
+
+test<-read.csv("./new_test.csv")
+res<-predict(mod, test)
+res1 = as.data.frame(res)
+head(res1)
+cbind(test, res1)
+
+```
+
+```{r}
+```
+
